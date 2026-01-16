@@ -3,159 +3,508 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Análise de Progresso - Classificação</title>
+    <title>Inventário Visão | Admin</title>
+    
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background: #f0f2f5; color: #333; }
-        .container { max-width: 700px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        h2 { margin-top: 0; color: #1a73e8; }
-        .upload-area { border: 2px dashed #ccc; padding: 30px; text-align: center; border-radius: 8px; margin-bottom: 20px; transition: 0.3s; }
-        .upload-area:hover { border-color: #1a73e8; background: #f8fbff; }
+        :root {
+            /* Paleta de Cores Moderna (Blurple & Dark) */
+            --bg-body: #f3f4f6;
+            --primary: #4f46e5; /* Indigo */
+            --primary-hover: #4338ca;
+            --surface: #ffffff;
+            --text-main: #111827;
+            --text-sec: #6b7280;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+            --radius: 16px;
+        }
+
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-body); color: var(--text-main); margin: 0; -webkit-font-smoothing: antialiased; }
+
+        /* --- ANIMAÇÕES --- */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- TELA DE LOGIN --- */
+        #login-screen {
+            position: fixed; inset: 0; background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
+            display: flex; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
+            padding: 3rem; border-radius: 24px; width: 100%; max-width: 400px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); text-align: center;
+            animation: fadeIn 0.5s ease-out;
+        }
+        .login-card h2 { font-weight: 700; letter-spacing: -0.5px; margin-bottom: 0.5rem; }
+        .input-box { margin-bottom: 1.5rem; text-align: left; }
+        .input-box label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-sec); }
+        .input-box input {
+            width: 100%; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 12px;
+            font-size: 1rem; transition: 0.2s; box-sizing: border-box;
+        }
+        .input-box input:focus { border-color: var(--primary); outline: none; }
         
-        button { background-color: #1a73e8; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
-        button:hover { background-color: #1557b0; }
+        .btn-primary {
+            width: 100%; padding: 1rem; background: var(--primary); color: white; border: none; border-radius: 12px;
+            font-weight: 600; font-size: 1rem; cursor: pointer; transition: 0.2s;
+        }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); }
+
+        /* --- DASHBOARD --- */
+        #app-screen { display: none; padding: 2rem; max-width: 1400px; margin: 0 auto; animation: fadeIn 0.8s ease-out; }
         
-        .result-box { margin-top: 25px; padding: 20px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 8px; display: none; }
-        pre { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 14px; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem; }
+        .brand h1 { margin: 0; font-size: 1.75rem; font-weight: 800; letter-spacing: -1px; color: #1e1b4b; }
+        .brand p { margin: 0; color: var(--text-sec); font-size: 0.95rem; }
         
-        /* Barra de progresso customizada */
-        progress { width: 100%; height: 25px; border-radius: 5px; margin-top: 10px; }
-        progress::-webkit-progress-bar { background-color: #eee; border-radius: 5px; }
-        progress::-webkit-progress-value { background-color: #4caf50; border-radius: 5px; transition: width 0.5s ease; }
+        .user-pill {
+            background: white; padding: 0.5rem 1rem; border-radius: 50px; display: flex; align-items: center; gap: 10px;
+            box-shadow: var(--shadow); font-weight: 600; font-size: 0.9rem;
+        }
+
+        /* GRID SYSTEM */
+        .grid-users { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 2rem; }
+
+        /* USER CARD */
+        .user-card {
+            background: var(--surface); border-radius: var(--radius); overflow: hidden;
+            box-shadow: var(--shadow); display: flex; flex-direction: column; transition: transform 0.2s;
+            border: 1px solid #f3f4f6;
+        }
+        .user-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+
+        .card-header {
+            padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f3f4f6;
+        }
+        .avatar-group { display: flex; align-items: center; gap: 1rem; }
+        .avatar {
+            width: 48px; height: 48px; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); color: var(--primary);
+            border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem;
+        }
+        .user-name { font-weight: 700; font-size: 1.1rem; color: var(--text-main); }
+        
+        .btn-trash { background: none; border: none; color: #e5e7eb; cursor: pointer; transition: 0.2s; }
+        .btn-trash:hover { color: var(--danger); }
+
+        /* TREES LIST */
+        .trees-area { padding: 1.5rem; flex-grow: 1; min-height: 100px; }
+        
+        .tree-item {
+            background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem; margin-bottom: 1rem;
+            position: relative; overflow: hidden;
+        }
+        .tree-item::before { /* Border Left colorido */
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--primary);
+        }
+        .tree-item.done::before { background: var(--success); }
+        .tree-item.wip::before { background: var(--warning); }
+
+        .tree-info { display: flex; justify-content: space-between; margin-bottom: 0.8rem; font-weight: 600; font-size: 0.9rem; }
+        
+        .progress-track { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin-bottom: 1rem; }
+        .progress-bar { height: 100%; border-radius: 4px; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        .stats-grid {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-bottom: 1rem;
+        }
+        .stat { background: white; padding: 6px; border-radius: 6px; text-align: center; border: 1px solid #f3f4f6; }
+        .stat small { display: block; font-size: 0.7rem; color: var(--text-sec); text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat strong { font-size: 0.9rem; color: var(--text-main); }
+
+        .actions { display: flex; gap: 8px; justify-content: flex-end; }
+        
+        .btn-sm {
+            padding: 0.5rem 0.8rem; border-radius: 8px; border: 1px solid #e5e7eb; background: white;
+            font-size: 0.8rem; font-weight: 600; color: var(--text-sec); cursor: pointer; display: flex; align-items: center; gap: 6px;
+            transition: 0.2s;
+        }
+        .btn-sm:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-sm.delete:hover { border-color: var(--danger); color: var(--danger); }
+
+        /* ADD BUTTONS */
+        .btn-add-tree {
+            width: 100%; padding: 1rem; background: transparent; border: none; border-top: 1px solid #f3f4f6;
+            color: var(--primary); font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .btn-add-tree:hover { background: #f9fafb; }
+
+        .card-new-user {
+            border: 2px dashed #d1d5db; border-radius: var(--radius); min-height: 200px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #9ca3af; cursor: pointer; transition: 0.2s; background: rgba(255,255,255,0.4);
+        }
+        .card-new-user:hover { border-color: var(--primary); color: var(--primary); background: white; transform: scale(0.98); }
+
+        /* LOADING & MODAL */
+        .overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); z-index: 2000;
+            display: none; justify-content: center; align-items: center;
+        }
+        .modal { background: white; padding: 2rem; border-radius: 16px; width: 90%; max-width: 350px; animation: fadeIn 0.3s; }
+        .modal h3 { margin-top: 0; }
+
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>📊 Auditoria de Classificação</h2>
-    <p>Selecione a planilha com as colunas: <strong>SECAO, GRUPO, SUBGRUPO</strong>.</p>
-    
-    <div class="upload-area">
-        <input type="file" id="inputExcel" accept=".xlsx, .xls" />
+    <div id="loadingOverlay" class="overlay">
+        <div class="spinner"></div>
     </div>
     
-    <div style="text-align: right;">
-        <button onclick="executarAnalise()">Processar Arquivo</button>
-    </div>
-
-    <div id="resultArea" class="result-box">
-        <h3>Resultado da Análise:</h3>
-        <div id="humanReadable"></div>
-        <hr>
-        <small>Saída JSON (para o Firebase):</small>
-        <pre id="jsonOutput">Processando...</pre>
-    </div>
-</div>
-
-<script>
-/**
- * Lógica de Negócio: Analisador de Classificação
- */
-class ProductAnalyzer {
-    constructor(targetColumns) {
-        // Colunas que definem se o produto está classificado (SEM ACENTO conforme sua imagem)
-        this.targetColumns = targetColumns; 
-    }
-
-    async processFile(fileInput) {
-        if (!fileInput.files || fileInput.files.length === 0) {
-            throw new Error("Por favor, selecione um arquivo Excel primeiro.");
-        }
-
-        const file = fileInput.files[0];
-        const data = await file.arrayBuffer();
-        
-        // Leitura do arquivo
-        const workbook = XLSX.read(data);
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-
-        // Converte para JSON. 
-        // 'defval: ""' garante que células vazias não venham como 'undefined'
-        const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-
-        if (rawData.length === 0) {
-            throw new Error("A planilha parece estar vazia.");
-        }
-
-        return this.calculateStats(rawData);
-    }
-
-    calculateStats(productList) {
-        let classifiedCount = 0;
-        let pendingCount = 0;
-
-        productList.forEach(product => {
-            // Verifica se o produto tem ao menos UMA das colunas preenchidas
-            const isClassified = this.targetColumns.some(col => {
-                const value = product[col];
-                // Checa se o valor existe e não é só espaço em branco
-                return value !== undefined && value !== "" && String(value).trim() !== "";
-            });
-
-            if (isClassified) {
-                classifiedCount++;
-            } else {
-                pendingCount++;
-            }
-        });
-
-        const total = classifiedCount + pendingCount;
-        const progress = total === 0 ? 0 : ((classifiedCount / total) * 100).toFixed(1);
-
-        return {
-            total_produtos: total,
-            total_classificados: classifiedCount,
-            total_pendentes: pendingCount,
-            percentual_conclusao: parseFloat(progress),
-            data_analise: new Date().toISOString() // Adicionei data para registro
-        };
-    }
-}
-
-// --- CONFIGURAÇÃO ---
-// Aqui estão os nomes exatos extraídos da sua imagem
-const CONFIG_COLUNAS = ["SECAO", "GRUPO", "SUBGRUPO"]; 
-
-const analyzer = new ProductAnalyzer(CONFIG_COLUNAS);
-
-async function executarAnalise() {
-    const fileInput = document.getElementById('inputExcel');
-    const resultArea = document.getElementById('resultArea');
-    const jsonOutput = document.getElementById('jsonOutput');
-    const humanReadable = document.getElementById('humanReadable');
-
-    try {
-        // Executa a classe
-        const stats = await analyzer.processFile(fileInput);
-
-        // Atualiza a interface
-        resultArea.style.display = 'block';
-        
-        // Mostra JSON formatado
-        jsonOutput.textContent = JSON.stringify(stats, null, 2);
-        
-        // Mostra visual amigável
-        humanReadable.innerHTML = `
-            <div style="font-size: 1.2em; margin-bottom: 10px;">
-                <strong>Progresso:</strong> ${stats.percentual_conclusao}%
+    <div id="modalOverlay" class="overlay">
+        <div class="modal">
+            <h3 id="modalTitle">Título</h3>
+            <div class="input-box">
+                <input type="text" id="modalInput" placeholder="Digite aqui...">
             </div>
-            <progress value="${stats.percentual_conclusao}" max="100"></progress>
-            <ul style="margin-top: 15px;">
-                <li>📦 Total de Produtos: <strong>${stats.total_produtos}</strong></li>
-                <li>✅ Classificados: <strong>${stats.total_classificados}</strong></li>
-                <li>⚠️ Pendentes: <strong>${stats.total_pendentes}</strong></li>
-            </ul>
-        `;
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-primary" id="modalConfirmBtn" style="background: #e5e7eb; color: #333;" onclick="closeModal()">Cancelar</button>
+                <button class="btn-primary" id="modalActionBtn">Confirmar</button>
+            </div>
+        </div>
+    </div>
 
-        console.log("Dados prontos para envio ao Firebase:", stats);
+    <div id="login-screen">
+        <div class="login-card">
+            <i class="fas fa-layer-group fa-3x" style="color: var(--primary); margin-bottom: 1.5rem;"></i>
+            <h2>Inventário Visão</h2>
+            <p style="margin-bottom: 2rem;">Entre para gerenciar o progresso.</p>
 
-    } catch (error) {
-        alert("Erro: " + error.message);
-        console.error(error);
-    }
-}
-</script>
+            <div class="input-box">
+                <label>Usuário / Analista</label>
+                <input type="text" id="loginUser" placeholder="Ex: Leo">
+            </div>
+            <div class="input-box">
+                <label>Senha Mercadológica</label>
+                <input type="password" id="loginPass" placeholder="••••••">
+            </div>
 
+            <button class="btn-primary" onclick="fazerLogin()">
+                Acessar Painel <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="app-screen">
+        <header>
+            <div class="brand">
+                <h1>Inventário Visão</h1>
+                <p>Administração de Árvores Mercadológicas</p>
+            </div>
+            <div class="user-pill">
+                <i class="fas fa-user-circle" style="color: var(--primary); font-size: 1.2rem;"></i>
+                <span id="welcomeMsg">Visitante</span>
+                <i class="fas fa-sign-out-alt" style="margin-left: 10px; cursor: pointer; color: var(--danger);" onclick="logout()" title="Sair"></i>
+            </div>
+        </header>
+
+        <div id="usersGrid" class="grid-users">
+            </div>
+    </div>
+
+    <script type="module">
+        // --- 1. CONFIGURAÇÃO DO FIREBASE (VOCÊ PRECISA PREENCHER AQUI) ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, arrayUnion, arrayRemove } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // 🔴 COPIE SEUS DADOS DO CONSOLE FIREBASE E COLE ABAIXO 🔴
+        const firebaseConfig = {
+            apiKey: "SUA_API_KEY_AQUI",
+            authDomain: "SEU_PROJETO.firebaseapp.com",
+            projectId: "SEU_PROJECT_ID",
+            storageBucket: "SEU_PROJETO.appspot.com",
+            messagingSenderId: "NUMERO",
+            appId: "ID_DO_APP"
+        };
+
+        // Inicializando Firebase
+        let db;
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            console.log("Firebase Conectado!");
+        } catch (e) {
+            console.error("Erro Firebase. Verifique a configuração.", e);
+            alert("Erro: Configure as chaves do Firebase no código!");
+        }
+
+        // --- 2. CONFIGURAÇÕES GERAIS ---
+        const CONFIG_COLUNAS = ["SECAO", "GRUPO", "SUBGRUPO"];
+        
+        // Variáveis globais para manipular a UI
+        window.fazerLogin = fazerLogin;
+        window.logout = logout;
+        window.closeModal = () => document.getElementById('modalOverlay').style.display = 'none';
+        
+        // Variável local para manter os dados sincronizados em memória
+        let localAnalistasData = [];
+
+        // --- 3. FUNÇÕES DE EXCEL (CORE) ---
+        window.processarExcel = function(file, userId, treeId) {
+            if(!file) return;
+            showLoading(true);
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+                    if (!json.length) throw new Error("Planilha vazia!");
+
+                    let classified = 0, pending = 0;
+
+                    json.forEach(row => {
+                        const ok = CONFIG_COLUNAS.some(c => row[c] && String(row[c]).trim().length > 0);
+                        ok ? classified++ : pending++;
+                    });
+
+                    const total = classified + pending;
+                    const prog = total === 0 ? 0 : ((classified / total) * 100).toFixed(1);
+                    const now = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR').slice(0,5);
+
+                    // ATUALIZAR NO FIREBASE
+                    // Precisamos encontrar o analista e substituir a árvore específica no array
+                    const analista = localAnalistasData.find(u => u.id === userId);
+                    if(analista) {
+                        const novasArvores = analista.arvores.map(t => {
+                            if(t.id === treeId) {
+                                return { ...t, progresso: parseFloat(prog), total, pendentes: pending, lastUpdate: now };
+                            }
+                            return t;
+                        });
+
+                        const userRef = doc(db, "analistas", userId);
+                        await updateDoc(userRef, { arvores: novasArvores });
+                        // alert(`✅ Sucesso: ${prog}%`);
+                    }
+
+                } catch (err) {
+                    alert("Erro: " + err.message);
+                } finally {
+                    showLoading(false);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // --- 4. FUNÇÕES DE BANCO DE DADOS (FIREBASE ACTIONS) ---
+
+        // Adicionar Novo Analista
+        window.openAddUserModal = () => {
+            openModal("Novo Analista", "Nome do colaborador", async (nome) => {
+                if(!nome) return;
+                showLoading(true);
+                try {
+                    await addDoc(collection(db, "analistas"), {
+                        nome: nome,
+                        arvores: []
+                    });
+                } catch(e) { console.error(e); alert("Erro ao criar"); }
+                showLoading(false);
+            });
+        };
+
+        // Deletar Analista
+        window.deleteUser = async (userId) => {
+            if(confirm("Tem certeza que deseja remover este analista e todos os dados dele?")) {
+                showLoading(true);
+                await deleteDoc(doc(db, "analistas", userId));
+                showLoading(false);
+            }
+        };
+
+        // Adicionar Árvore
+        window.openAddTreeModal = (userId) => {
+            openModal("Nova Árvore", "Nome (Ex: Perecíveis)", async (nomeArvore) => {
+                if(!nomeArvore) return;
+                showLoading(true);
+                const novaArvore = {
+                    id: 'tree_' + Date.now(),
+                    nome: nomeArvore,
+                    progresso: 0, total: 0, pendentes: 0, lastUpdate: "Novo"
+                };
+                
+                const userRef = doc(db, "analistas", userId);
+                await updateDoc(userRef, {
+                    arvores: arrayUnion(novaArvore)
+                });
+                showLoading(false);
+            });
+        };
+
+        // Deletar Árvore
+        window.deleteTree = async (userId, treeId) => {
+            if(!confirm("Apagar esta árvore?")) return;
+            
+            showLoading(true);
+            const analista = localAnalistasData.find(u => u.id === userId);
+            const arvoresAtualizadas = analista.arvores.filter(t => t.id !== treeId);
+            
+            await updateDoc(doc(db, "analistas", userId), { arvores: arvoresAtualizadas });
+            showLoading(false);
+        }
+
+        // --- 5. RENDERIZAÇÃO E UI ---
+
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+        }
+
+        // Listener Real-Time (O Coração do Sistema)
+        function initDashboard() {
+            showLoading(true);
+            const q = collection(db, "analistas");
+            
+            // Isso roda sempre que algo muda no banco de dados
+            onSnapshot(q, (snapshot) => {
+                const usersGrid = document.getElementById('usersGrid');
+                usersGrid.innerHTML = '';
+                
+                localAnalistasData = []; // Reset local cache
+
+                snapshot.forEach((doc) => {
+                    const user = { id: doc.id, ...doc.data() };
+                    localAnalistasData.push(user);
+                    renderUserCard(user, usersGrid);
+                });
+
+                // Botão de Adicionar Usuário no final
+                usersGrid.innerHTML += `
+                    <div class="card-new-user" onclick="openAddUserModal()">
+                        <i class="fas fa-user-plus fa-3x" style="margin-bottom:15px;"></i>
+                        <span style="font-weight:600;">Novo Analista</span>
+                    </div>
+                `;
+                showLoading(false);
+            });
+        }
+
+        function renderUserCard(user, container) {
+            let treesHtml = '';
+
+            if(!user.arvores || user.arvores.length === 0) {
+                treesHtml = `<div style="text-align:center; color:#9ca3af; padding:20px; font-size:0.9rem; font-style:italic;">Nenhuma árvore criada.</div>`;
+            } else {
+                user.arvores.forEach(tree => {
+                    let colorVar = 'var(--primary)';
+                    let statusClass = '';
+                    if(tree.progresso >= 100) { colorVar = 'var(--success)'; statusClass = 'done'; }
+                    else if(tree.progresso > 0 && tree.progresso < 100) { colorVar = 'var(--warning)'; statusClass = 'wip'; }
+
+                    const feitos = (tree.total || 0) - (tree.pendentes || 0);
+
+                    treesHtml += `
+                        <div class="tree-item ${statusClass}">
+                            <div class="tree-info">
+                                <span>${tree.nome}</span>
+                                <span style="color:${colorVar}">${tree.progresso}%</span>
+                            </div>
+                            
+                            <div class="progress-track">
+                                <div class="progress-bar" style="width:${tree.progresso}%; background:${colorVar}"></div>
+                            </div>
+
+                            <div class="stats-grid">
+                                <div class="stat"><small>Total</small><strong>${tree.total || 0}</strong></div>
+                                <div class="stat"><small>Feito</small><strong style="color:var(--success)">${feitos}</strong></div>
+                                <div class="stat"><small>Falta</small><strong style="color:var(--danger)">${tree.pendentes || 0}</strong></div>
+                            </div>
+
+                            <div class="actions">
+                                <span style="margin-right:auto; font-size:0.75rem; color:#9ca3af; align-self:center;">
+                                    <i class="far fa-clock"></i> ${tree.lastUpdate}
+                                </span>
+                                
+                                <button class="btn-sm delete" onclick="deleteTree('${user.id}', '${tree.id}')" title="Excluir">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                
+                                <label class="btn-sm">
+                                    <i class="fas fa-upload"></i> Upload
+                                    <input type="file" hidden accept=".xlsx" onchange="processarExcel(this.files[0], '${user.id}', '${tree.id}')">
+                                </label>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            const card = `
+                <div class="user-card">
+                    <div class="card-header">
+                        <div class="avatar-group">
+                            <div class="avatar">${user.nome.charAt(0).toUpperCase()}</div>
+                            <div class="user-name">${user.nome}</div>
+                        </div>
+                        <button class="btn-trash" onclick="deleteUser('${user.id}')"><i class="fas fa-times"></i></button>
+                    </div>
+                    
+                    <div class="trees-area">
+                        ${treesHtml}
+                    </div>
+
+                    <button class="btn-add-tree" onclick="openAddTreeModal('${user.id}')">
+                        <i class="fas fa-plus"></i> Adicionar Árvore
+                    </button>
+                </div>
+            `;
+            container.innerHTML += card;
+        }
+
+        // --- SISTEMA DE LOGIN ---
+        function fazerLogin() {
+            const user = document.getElementById('loginUser').value;
+            const pass = document.getElementById('loginPass').value;
+            
+            if(user && pass) {
+                // Aqui seria a autenticação real, mas por enquanto é visual
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('app-screen').style.display = 'block';
+                document.getElementById('welcomeMsg').innerText = user;
+                
+                // Inicia o Listener do Firebase
+                initDashboard();
+            } else {
+                alert("Preencha todos os campos!");
+            }
+        }
+        
+        function logout() {
+            location.reload();
+        }
+
+        // --- UTILITÁRIO DE MODAL ---
+        let modalCallback = null;
+        window.openModal = function(title, placeholder, callback) {
+            document.getElementById('modalTitle').innerText = title;
+            const input = document.getElementById('modalInput');
+            input.value = '';
+            input.placeholder = placeholder;
+            document.getElementById('modalOverlay').style.display = 'flex';
+            input.focus();
+            
+            modalCallback = callback;
+        }
+
+        document.getElementById('modalActionBtn').onclick = () => {
+            const val = document.getElementById('modalInput').value;
+            if(modalCallback) modalCallback(val);
+            document.getElementById('modalOverlay').style.display = 'none';
+        }
+
+    </script>
 </body>
 </html>
