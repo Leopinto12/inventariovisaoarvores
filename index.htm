@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventário Visão</title>
+    
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --bg: #f3f4f6;
+            --surface: #ffffff;
+            --text-main: #111827;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-main); margin: 0; min-height: 100vh; }
+
+        /* LOADING */
+        #loader {
+            position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 2000;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .spinner { width: 50px; height: 50px; border: 4px solid #e5e7eb; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* LOGIN */
+        #login-screen {
+            position: fixed; inset: 0; z-index: 1000; display: flex; justify-content: center; align-items: center;
+            background: linear-gradient(135deg, #4f46e5 0%, #312e81 100%);
+        }
+        .login-box {
+            background: white; padding: 40px; border-radius: 24px; width: 100%; max-width: 380px; text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+        }
+        .login-box h2 { margin: 0 0 5px 0; color: #111827; }
+        .login-box input {
+            width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #d1d5db; border-radius: 12px; box-sizing: border-box;
+            font-size: 1rem; transition: 0.3s;
+        }
+        .login-box input:focus { border-color: var(--primary); outline: none; }
+        .btn-main {
+            width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px;
+            font-weight: 600; cursor: pointer; font-size: 1rem; transition: 0.3s;
+        }
+        .btn-main:hover { background: var(--primary-dark); transform: translateY(-2px); }
+
+        /* DASHBOARD */
+        #app-screen { display: none; padding: 40px; max-width: 1400px; margin: 0 auto; }
+
+        header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px;
+            background: white; padding: 20px 30px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+        .brand h1 { margin: 0; font-size: 1.5rem; letter-spacing: -0.5px; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 30px; }
+
+        /* CARD */
+        .card {
+            background: white; border-radius: 20px; overflow: hidden; border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); transition: 0.3s; display: flex; flex-direction: column;
+        }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+
+        .card-header {
+            padding: 20px; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;
+            background: #f9fafb;
+        }
+        .user-info { display: flex; align-items: center; gap: 12px; }
+        .avatar {
+            width: 44px; height: 44px; background: #e0e7ff; color: var(--primary); border-radius: 12px;
+            display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem;
+        }
+
+        .tree-container { padding: 20px; flex-grow: 1; }
+
+        .tree-item {
+            background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 15px; margin-bottom: 15px;
+            position: relative; overflow: hidden;
+        }
+        .tree-item.done { border-left: 5px solid var(--success); }
+        .tree-item.wip { border-left: 5px solid var(--warning); }
+        .tree-item.empty { border-left: 5px solid #d1d5db; }
+
+        .tree-top { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 10px; }
+        
+        .progress-track { height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden; margin-bottom: 15px; }
+        .progress-fill { height: 100%; transition: width 1s ease; }
+
+        .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; text-align: center; margin-bottom: 15px; }
+        .stat { background: #f9fafb; padding: 5px; border-radius: 8px; border: 1px solid #f3f4f6; }
+        .stat small { display: block; font-size: 0.7rem; color: #6b7280; text-transform: uppercase; font-weight: 700; }
+        .stat strong { font-size: 0.9rem; }
+
+        .actions { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px dashed #e5e7eb; padding-top: 10px; }
+        .btn-icon {
+            padding: 6px 10px; border-radius: 8px; cursor: pointer; border: 1px solid #e5e7eb; background: white;
+            color: #4b5563; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; transition: 0.2s;
+        }
+        .btn-icon:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-trash:hover { border-color: var(--danger); color: var(--danger); }
+
+        /* ADD BTNS */
+        .btn-add-tree {
+            width: 100%; padding: 15px; background: #f9fafb; border: none; border-top: 1px solid #e5e7eb;
+            color: var(--primary); font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .btn-add-tree:hover { background: #eef2ff; }
+
+        .card-new {
+            border: 2px dashed #d1d5db; border-radius: 20px; min-height: 250px; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; cursor: pointer; color: #9ca3af; transition: 0.2s;
+        }
+        .card-new:hover { border-color: var(--primary); color: var(--primary); background: white; }
+
+        /* ERROR MESSAGE */
+        #error-msg {
+            display: none; background: #fee2e2; color: #b91c1c; padding: 15px; border-radius: 10px;
+            margin-bottom: 20px; text-align: center; border: 1px solid #fecaca;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <div class="spinner"></div>
+        <p style="margin-top: 15px; color: #666; font-weight: 500;">Sincronizando...</p>
+    </div>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <i class="fas fa-layer-group fa-3x" style="color: var(--primary); margin-bottom: 20px;"></i>
+            <h2>Inventário Visão</h2>
+            <p style="color: #6b7280; margin-bottom: 30px;">Gestão de Classificação</p>
+            
+            <input type="text" id="loginUser" placeholder="Usuário (Ex: Leo)">
+            <input type="password" id="loginPass" placeholder="Senha">
+            <button class="btn-main" onclick="fazerLogin()">Entrar</button>
+        </div>
+    </div>
+
+    <div id="app-screen">
+        <div id="error-msg"></div>
+
+        <header>
+            <div class="brand">
+                <h1>Inventário Visão</h1>
+                <p style="margin: 5px 0 0; color: #6b7280;">Painel Administrativo em Tempo Real</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span id="welcomeMsg" style="font-weight: 600;">Visitante</span>
+                <button onclick="logout()" style="border: 1px solid #e5e7eb; background: white; padding: 8px 15px; border-radius: 8px; cursor: pointer; color: #ef4444;">Sair</button>
+            </div>
+        </header>
+
+        <div id="usersGrid" class="grid">
+            </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, arrayUnion } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // === SUAS CHAVES AQUI (JÁ CONFIGURADAS) ===
+        const firebaseConfig = {
+            apiKey: "AIzaSyC3vK2aGsf7Omxks1kWLmkqVmoyeaQwWtI",
+            authDomain: "inventario-visao-arvore.firebaseapp.com",
+            projectId: "inventario-visao-arvore",
+            storageBucket: "inventario-visao-arvore.firebasestorage.app",
+            messagingSenderId: "835161543929",
+            appId: "1:835161543929:web:baa01989f20cac5d3f3e28",
+            measurementId: "G-1F72EYEJ2G"
+        };
+
+        let db;
+        let localData = [];
+
+        // Colunas Exatas da sua imagem
+        const CONFIG_COLUNAS = ["SECAO", "GRUPO", "SUBGRUPO"];
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            console.log("🔥 Firebase Conectado!");
+            
+            // Expor funções
+            window.fazerLogin = fazerLogin;
+            window.logout = logout;
+            window.processarExcel = processarExcel;
+            window.addUser = addUser;
+            window.deleteUser = deleteUser;
+            window.addTree = addTree;
+            window.deleteTree = deleteTree;
+
+        } catch (e) {
+            alert("Erro fatal no Firebase: " + e.message);
+        }
+
+        // --- EXCEL ---
+        function processarExcel(file, userId, treeId) {
+            if(!file) return;
+            document.getElementById('loader').style.display = 'flex';
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+
+                    let classified = 0, pending = 0;
+
+                    json.forEach(row => {
+                        const hasContent = CONFIG_COLUNAS.some(c => row[c] && String(row[c]).trim().length > 0);
+                        hasContent ? classified++ : pending++;
+                    });
+
+                    const total = classified + pending;
+                    const prog = total === 0 ? 0 : ((classified / total) * 100).toFixed(1);
+                    const now = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR').slice(0,5);
+
+                    // Update Firebase
+                    const user = localData.find(u => u.id === userId);
+                    const newTrees = user.arvores.map(t => {
+                        if(t.id === treeId) return { ...t, progresso: parseFloat(prog), total, pendentes: pending, lastUpdate: now };
+                        return t;
+                    });
+
+                    await updateDoc(doc(db, "analistas", userId), { arvores: newTrees });
+                    alert(`✅ Atualizado com sucesso: ${prog}%`);
+
+                } catch (err) {
+                    alert("Erro no arquivo: " + err.message);
+                } finally {
+                    document.getElementById('loader').style.display = 'none';
+                    // Limpa inputs file
+                    document.querySelectorAll('input[type="file"]').forEach(i => i.value = '');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // --- CRUD FIREBASE ---
+        async function addUser() {
+            const nome = prompt("Nome do Analista:");
+            if(nome) {
+                document.getElementById('loader').style.display = 'flex';
+                await addDoc(collection(db, "analistas"), { nome, arvores: [] });
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        async function deleteUser(id) {
+            if(confirm("Remover este analista e todos os dados?")) {
+                document.getElementById('loader').style.display = 'flex';
+                await deleteDoc(doc(db, "analistas", id));
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        async function addTree(userId) {
+            const nome = prompt("Nome da Árvore (Ex: Bazar):");
+            if(nome) {
+                document.getElementById('loader').style.display = 'flex';
+                await updateDoc(doc(db, "analistas", userId), {
+                    arvores: arrayUnion({ id: 't'+Date.now(), nome, progresso: 0, total: 0, pendentes: 0, lastUpdate: "Novo" })
+                });
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        async function deleteTree(userId, treeId) {
+            if(confirm("Apagar árvore?")) {
+                const user = localData.find(u => u.id === userId);
+                const newTrees = user.arvores.filter(t => t.id !== treeId);
+                await updateDoc(doc(db, "analistas", userId), { arvores: newTrees });
+            }
+        }
+
+        // --- RENDERIZADOR REAL-TIME ---
+        function startListener() {
+            const grid = document.getElementById('usersGrid');
+            const errorBox = document.getElementById('error-msg');
+            
+            onSnapshot(collection(db, "analistas"), (snapshot) => {
+                grid.innerHTML = '';
+                localData = [];
+                errorBox.style.display = 'none';
+
+                if(snapshot.empty) {
+                    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:#999;">Nenhum analista encontrado.</div>';
+                }
+
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const user = { id: docSnap.id, ...data };
+                    localData.push(user);
+
+                    let treesHtml = '';
+                    if(user.arvores && user.arvores.length > 0) {
+                        user.arvores.forEach(tree => {
+                            let color = '#4f46e5';
+                            let statusClass = 'empty';
+                            if(tree.progresso >= 100) { color = '#10b981'; statusClass = 'done'; }
+                            else if(tree.progresso > 0) { color = '#f59e0b'; statusClass = 'wip'; }
+
+                            const feitos = (tree.total||0) - (tree.pendentes||0);
+
+                            treesHtml += `
+                                <div class="tree-item ${statusClass}">
+                                    <div class="tree-top">
+                                        <span>${tree.nome}</span>
+                                        <span style="color:${color}">${tree.progresso}%</span>
+                                    </div>
+                                    <div class="progress-track">
+                                        <div class="progress-fill" style="width:${tree.progresso}%; background:${color}"></div>
+                                    </div>
+                                    <div class="stats-row">
+                                        <div class="stat"><small>Total</small><strong>${tree.total||0}</strong></div>
+                                        <div class="stat"><small style="color:var(--success)">Pronto</small><strong>${feitos}</strong></div>
+                                        <div class="stat"><small style="color:var(--danger)">Falta</small><strong>${tree.pendentes||0}</strong></div>
+                                    </div>
+                                    <div class="actions">
+                                        <span style="margin-right:auto; font-size:0.75rem; color:#9ca3af; align-self:center;">${tree.lastUpdate}</span>
+                                        <button class="btn-icon btn-trash" onclick="deleteTree('${user.id}', '${tree.id}')"><i class="fas fa-trash"></i></button>
+                                        <label class="btn-icon">
+                                            <i class="fas fa-upload"></i> Upload
+                                            <input type="file" hidden accept=".xlsx" onchange="processarExcel(this.files[0], '${user.id}', '${tree.id}')">
+                                        </label>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        treesHtml = '<div style="text-align:center; padding:20px; color:#ccc; font-style:italic;">Nenhuma árvore.</div>';
+                    }
+
+                    grid.innerHTML += `
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="user-info">
+                                    <div class="avatar">${user.nome[0].toUpperCase()}</div>
+                                    <span style="font-weight:600; font-size:1.1rem;">${user.nome}</span>
+                                </div>
+                                <button class="btn-icon btn-trash" onclick="deleteUser('${user.id}')" style="border:none;"><i class="fas fa-times"></i></button>
+                            </div>
+                            <div class="tree-container">${treesHtml}</div>
+                            <button class="btn-add-tree" onclick="addTree('${user.id}')"><i class="fas fa-plus"></i> Adicionar Árvore</button>
+                        </div>
+                    `;
+                });
+
+                grid.innerHTML += `
+                    <div class="card-new" onclick="addUser()">
+                        <i class="fas fa-user-plus fa-3x" style="margin-bottom:15px"></i>
+                        <strong>Novo Analista</strong>
+                    </div>
+                `;
+
+            }, (error) => {
+                console.error(error);
+                if(error.code === 'permission-denied') {
+                    errorBox.innerHTML = `<strong>⚠️ ACESSO BLOQUEADO PELO FIREBASE</strong><br>Você precisa ir no Console do Firebase > Firestore > Regras e alterar para <code>allow read, write: if true;</code>`;
+                    errorBox.style.display = 'block';
+                }
+            });
+        }
+
+        // --- LOGIN ---
+        function fazerLogin() {
+            const u = document.getElementById('loginUser').value;
+            if(u) {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('app-screen').style.display = 'block';
+                document.getElementById('welcomeMsg').innerText = u;
+                startListener();
+            } else {
+                alert("Digite um usuário.");
+            }
+        }
+
+        function logout() { location.reload(); }
+
+    </script>
+</body>
+</html>
