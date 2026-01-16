@@ -3,91 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventário Visão (Debug Mode)</title>
+    <title>Inventário Visão</title>
     
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        /* Estilos Essenciais */
-        body { font-family: 'Poppins', sans-serif; background: #eef2ff; color: #333; margin: 0; padding: 0; }
-        
-        /* DIAGNÓSTICO (Para sabermos o erro) */
-        #debug-panel {
-            background: #000; color: #0f0; padding: 10px; font-family: monospace; 
-            border-bottom: 2px solid #0f0; max-height: 150px; overflow-y: auto; font-size: 12px;
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --bg: #f3f4f6;
+            --surface: #ffffff;
+            --text-main: #111827;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
         }
+
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-main); margin: 0; min-height: 100vh; }
+
+        /* LOADING */
+        #loader {
+            position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 2000;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .spinner { width: 50px; height: 50px; border: 4px solid #e5e7eb; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* LOGIN */
         #login-screen {
             position: fixed; inset: 0; z-index: 1000; display: flex; justify-content: center; align-items: center;
-            background: linear-gradient(135deg, #4338ca 0%, #312e81 100%);
+            background: linear-gradient(135deg, #4f46e5 0%, #312e81 100%);
         }
-        .login-card {
-            background: rgba(255,255,255,0.95); padding: 40px; border-radius: 20px; width: 350px; text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        .login-box {
+            background: white; padding: 40px; border-radius: 24px; width: 100%; max-width: 380px; text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
         }
-        .login-card input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box;}
-        .btn { width: 100%; padding: 12px; background: #4f46e5; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;}
-        .btn:hover { background: #4338ca; }
+        .login-box h2 { margin: 0 0 5px 0; color: #111827; }
+        .login-box input {
+            width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #d1d5db; border-radius: 12px; box-sizing: border-box;
+            font-size: 1rem; transition: 0.3s;
+        }
+        .login-box input:focus { border-color: var(--primary); outline: none; }
+        .btn-main {
+            width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px;
+            font-weight: 600; cursor: pointer; font-size: 1rem; transition: 0.3s;
+        }
+        .btn-main:hover { background: var(--primary-dark); transform: translateY(-2px); }
 
-        /* APP */
-        #app-screen { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; }
-        header { background: white; padding: 20px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        /* DASHBOARD */
+        #app-screen { display: none; padding: 40px; max-width: 1400px; margin: 0 auto; }
+
+        header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px;
+            background: white; padding: 20px 30px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+        .brand h1 { margin: 0; font-size: 1.5rem; letter-spacing: -0.5px; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 30px; }
+
+        /* CARD */
+        .card {
+            background: white; border-radius: 20px; overflow: hidden; border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); transition: 0.3s; display: flex; flex-direction: column;
+        }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+
+        .card-header {
+            padding: 20px; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;
+            background: #f9fafb;
+        }
+        .user-info { display: flex; align-items: center; gap: 12px; }
+        .avatar {
+            width: 44px; height: 44px; background: #e0e7ff; color: var(--primary); border-radius: 12px;
+            display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem;
+        }
+
+        .tree-container { padding: 20px; flex-grow: 1; }
+
+        .tree-item {
+            background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 15px; margin-bottom: 15px;
+            position: relative; overflow: hidden;
+        }
+        .tree-item.done { border-left: 5px solid var(--success); }
+        .tree-item.wip { border-left: 5px solid var(--warning); }
+        .tree-item.empty { border-left: 5px solid #d1d5db; }
+
+        .tree-top { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 10px; }
         
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
-        
-        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .card-header { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
-        .avatar { width: 40px; height: 40px; background: #e0e7ff; color: #4f46e5; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; }
+        .progress-track { height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden; margin-bottom: 15px; }
+        .progress-fill { height: 100%; transition: width 1s ease; }
 
-        .tree-item { background: #f9fafb; border: 1px solid #eee; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
-        .progress-bg { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; margin: 5px 0; }
-        .progress-fill { height: 100%; transition: width 0.5s; background: #4f46e5; }
-        .stats { display: flex; justify-content: space-between; font-size: 0.8rem; color: #666; margin-top: 5px; }
+        .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; text-align: center; margin-bottom: 15px; }
+        .stat { background: #f9fafb; padding: 5px; border-radius: 8px; border: 1px solid #f3f4f6; }
+        .stat small { display: block; font-size: 0.7rem; color: #6b7280; text-transform: uppercase; font-weight: 700; }
+        .stat strong { font-size: 0.9rem; }
 
-        /* Botão Novo Analista */
-        .new-analyst { border: 2px dashed #ccc; display: flex; justify-content: center; align-items: center; flex-direction: column; color: #888; cursor: pointer; min-height: 200px; border-radius: 15px; }
-        .new-analyst:hover { border-color: #4f46e5; color: #4f46e5; background: white; }
+        .actions { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px dashed #e5e7eb; padding-top: 10px; }
+        .btn-icon {
+            padding: 6px 10px; border-radius: 8px; cursor: pointer; border: 1px solid #e5e7eb; background: white;
+            color: #4b5563; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; transition: 0.2s;
+        }
+        .btn-icon:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-trash:hover { border-color: var(--danger); color: var(--danger); }
 
-        /* Icon Btns */
-        .icon-btn { cursor: pointer; margin-left: 5px; color: #666; }
-        .icon-btn:hover { color: red; }
+        /* ADD BTNS */
+        .btn-add-tree {
+            width: 100%; padding: 15px; background: #f9fafb; border: none; border-top: 1px solid #e5e7eb;
+            color: var(--primary); font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .btn-add-tree:hover { background: #eef2ff; }
 
-        /* Loading Overlay */
-        #loading { position: fixed; inset: 0; background: rgba(255,255,255,0.8); z-index: 2000; display: none; justify-content: center; align-items: center; }
+        .card-new {
+            border: 2px dashed #d1d5db; border-radius: 20px; min-height: 250px; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; cursor: pointer; color: #9ca3af; transition: 0.2s;
+        }
+        .card-new:hover { border-color: var(--primary); color: var(--primary); background: white; }
+
+        /* ERROR MESSAGE */
+        #error-msg {
+            display: none; background: #fee2e2; color: #b91c1c; padding: 15px; border-radius: 10px;
+            margin-bottom: 20px; text-align: center; border: 1px solid #fecaca;
+        }
+
     </style>
 </head>
 <body>
 
-    <div id="debug-panel">
-        <strong>STATUS DO SISTEMA:</strong><br>
-        <span id="logs">Inicializando...</span>
+    <div id="loader">
+        <div class="spinner"></div>
+        <p style="margin-top: 15px; color: #666; font-weight: 500;">Sincronizando...</p>
     </div>
 
-    <div id="loading"><i class="fas fa-spinner fa-spin fa-3x" style="color: #4f46e5;"></i></div>
-
     <div id="login-screen">
-        <div class="login-card">
+        <div class="login-box">
+            <i class="fas fa-layer-group fa-3x" style="color: var(--primary); margin-bottom: 20px;"></i>
             <h2>Inventário Visão</h2>
-            <p>Admin Login</p>
-            <input type="text" id="userIn" placeholder="Seu nome (Ex: Leo)">
-            <button class="btn" onclick="logar()">Entrar</button>
-            <p style="font-size: 12px; color: #ccc; margin-top: 10px;">Se não entrar, verifique o painel preto acima.</p>
+            <p style="color: #6b7280; margin-bottom: 30px;">Gestão de Classificação</p>
+            
+            <input type="text" id="loginUser" placeholder="Usuário (Ex: Leo)">
+            <input type="password" id="loginPass" placeholder="Senha">
+            <button class="btn-main" onclick="fazerLogin()">Entrar</button>
         </div>
     </div>
 
     <div id="app-screen">
+        <div id="error-msg"></div>
+
         <header>
-            <h1>Dashboard</h1>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span id="welcome"></span>
-                <button onclick="sair()" style="background: #fee2e2; border:none; padding: 5px 10px; border-radius: 5px; color: red; cursor:pointer;">Sair</button>
+            <div class="brand">
+                <h1>Inventário Visão</h1>
+                <p style="margin: 5px 0 0; color: #6b7280;">Painel Administrativo em Tempo Real</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span id="welcomeMsg" style="font-weight: 600;">Visitante</span>
+                <button onclick="logout()" style="border: 1px solid #e5e7eb; background: white; padding: 8px 15px; border-radius: 8px; cursor: pointer; color: #ef4444;">Sair</button>
             </div>
         </header>
 
-        <div id="grid" class="grid">
+        <div id="usersGrid" class="grid">
             </div>
     </div>
 
@@ -96,203 +171,225 @@
         import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, arrayUnion } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // LOG DE DEBUG VISUAL
-        function log(msg, error = false) {
-            const painel = document.getElementById('logs');
-            const color = error ? 'red' : '#0f0';
-            painel.innerHTML += `<div style="color:${color}">> ${msg}</div>`;
-            console.log(msg);
-        }
-
-        log("Carregando configurações do Firebase...");
-
-        // SUAS CHAVES (Já inseridas)
+        // === SUAS CHAVES AQUI (JÁ CONFIGURADAS) ===
         const firebaseConfig = {
             apiKey: "AIzaSyC3vK2aGsf7Omxks1kWLmkqVmoyeaQwWtI",
             authDomain: "inventario-visao-arvore.firebaseapp.com",
             projectId: "inventario-visao-arvore",
             storageBucket: "inventario-visao-arvore.firebasestorage.app",
             messagingSenderId: "835161543929",
-            appId: "1:835161543929:web:baa01989f20cac5d3f3e28"
+            appId: "1:835161543929:web:baa01989f20cac5d3f3e28",
+            measurementId: "G-1F72EYEJ2G"
         };
 
         let db;
         let localData = [];
 
+        // Colunas Exatas da sua imagem
+        const CONFIG_COLUNAS = ["SECAO", "GRUPO", "SUBGRUPO"];
+
         try {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
-            log("Firebase SDK Inicializado com Sucesso!");
+            console.log("🔥 Firebase Conectado!");
+            
+            // Expor funções
+            window.fazerLogin = fazerLogin;
+            window.logout = logout;
+            window.processarExcel = processarExcel;
+            window.addUser = addUser;
+            window.deleteUser = deleteUser;
+            window.addTree = addTree;
+            window.deleteTree = deleteTree;
+
         } catch (e) {
-            log("ERRO CRÍTICO AO INICIAR FIREBASE: " + e.message, true);
+            alert("Erro fatal no Firebase: " + e.message);
         }
 
-        // Funções Globais
-        window.logar = function() {
-            const u = document.getElementById('userIn').value;
-            if(!u) return alert("Digite um nome");
-            
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('app-screen').style.display = 'block';
-            document.getElementById('welcome').innerText = u;
-            
-            iniciarEscuta();
-        }
-
-        window.sair = () => location.reload();
-
-        // 1. ESCUTA DO BANCO DE DADOS
-        function iniciarEscuta() {
-            log("Tentando conectar ao Firestore...");
-            const grid = document.getElementById('grid');
-
-            try {
-                onSnapshot(collection(db, "analistas"), (snapshot) => {
-                    log("Conexão estabelecida! Recebendo dados...");
-                    grid.innerHTML = '';
-                    localData = [];
-
-                    if(snapshot.empty) {
-                        log("Conectado, mas a coleção 'analistas' está vazia.");
-                        grid.innerHTML = '<p style="grid-column:1/-1; text-align:center;">Nenhum analista. Adicione um abaixo.</p>';
-                    }
-
-                    snapshot.forEach(docSnap => {
-                        const data = docSnap.data();
-                        const user = { id: docSnap.id, ...data };
-                        localData.push(user);
-                        renderCard(user, grid);
-                    });
-
-                    // Botão Adicionar sempre no final
-                    grid.innerHTML += `
-                        <div class="new-analyst" onclick="addUser()">
-                            <i class="fas fa-plus fa-3x" style="margin-bottom:10px;"></i>
-                            NOVO ANALISTA
-                        </div>
-                    `;
-
-                }, (error) => {
-                    // AQUI É ONDE PEGAMOS O ERRO DE TELA BRANCA
-                    if(error.code === 'permission-denied') {
-                        log("ERRO: PERMISSÃO NEGADA. Vá no Firebase Console > Rules e altere para 'true'.", true);
-                        alert("ERRO DE PERMISSÃO!\n\nO banco de dados está bloqueado.\nVocê precisa ir no Console do Firebase > Firestore > Regras e mudar 'false' para 'true'.");
-                    } else if (error.code === 'not-found') {
-                        log("ERRO: BANCO NÃO ENCONTRADO. Crie o Firestore no Console.", true);
-                    } else {
-                        log("ERRO DESCONHECIDO: " + error.message, true);
-                    }
-                });
-            } catch (e) {
-                log("ERRO NO ONSNAPSHOT: " + e.message, true);
-            }
-        }
-
-        // 2. RENDERIZAÇÃO
-        function renderCard(user, container) {
-            let treesHtml = '';
-            if(user.arvores && user.arvores.length > 0) {
-                user.arvores.forEach(tree => {
-                    let color = tree.progresso >= 100 ? '#10b981' : '#f59e0b';
-                    treesHtml += `
-                        <div class="tree-item">
-                            <div style="display:flex; justify-content:space-between; font-weight:600;">
-                                <span>${tree.nome}</span>
-                                <span style="color:${color}">${tree.progresso}%</span>
-                            </div>
-                            <div class="progress-bg"><div class="progress-fill" style="width:${tree.progresso}%; background:${color}"></div></div>
-                            <div class="stats">
-                                <span>Total: ${tree.total||0}</span>
-                                <span style="cursor:pointer; color:red;" onclick="delTree('${user.id}', '${tree.id}')"><i class="fas fa-trash"></i></span>
-                                <label style="cursor:pointer; color:blue;">
-                                    <i class="fas fa-upload"></i>
-                                    <input type="file" hidden onchange="uploadXls(this, '${user.id}', '${tree.id}')">
-                                </label>
-                            </div>
-                        </div>
-                    `;
-                });
-            } else {
-                treesHtml = '<small style="color:#999">Sem árvores.</small>';
-            }
-
-            container.innerHTML += `
-                <div class="card">
-                    <div class="card-header">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <div class="avatar">${user.nome[0].toUpperCase()}</div>
-                            <strong>${user.nome}</strong>
-                        </div>
-                        <i class="fas fa-times icon-btn" onclick="delUser('${user.id}')"></i>
-                    </div>
-                    <div>${treesHtml}</div>
-                    <button style="width:100%; margin-top:10px; padding:8px; border:1px solid #eee; background:white; cursor:pointer;" onclick="addTree('${user.id}')">+ Árvore</button>
-                </div>
-            `;
-        }
-
-        // 3. FUNÇÕES (Globais para HTML acessar)
-        window.addUser = async () => {
-            const nome = prompt("Nome:");
-            if(nome) await addDoc(collection(db, "analistas"), { nome, arvores: [] });
-        }
-
-        window.delUser = async (id) => {
-            if(confirm("Apagar?")) await deleteDoc(doc(db, "analistas", id));
-        }
-
-        window.addTree = async (uid) => {
-            const nome = prompt("Nome da Árvore:");
-            if(nome) {
-                await updateDoc(doc(db, "analistas", uid), {
-                    arvores: arrayUnion({ id: 't'+Date.now(), nome, progresso:0, total:0, pendentes:0 })
-                });
-            }
-        }
-
-        window.delTree = async (uid, tid) => {
-            if(confirm("Apagar árvore?")) {
-                const u = localData.find(x => x.id === uid);
-                const novas = u.arvores.filter(x => x.id !== tid);
-                await updateDoc(doc(db, "analistas", uid), { arvores: novas });
-            }
-        }
-
-        window.uploadXls = function(input, uid, tid) {
-            const file = input.files[0];
+        // --- EXCEL ---
+        function processarExcel(file, userId, treeId) {
             if(!file) return;
-            
-            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('loader').style.display = 'flex';
+
             const reader = new FileReader();
-            reader.onload = async (e) => {
+            reader.onload = async function(e) {
                 try {
-                    const workbook = XLSX.read(e.target.result, {type:'array'});
-                    const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                    
-                    let ok=0, nok=0;
-                    const cols = ["SECAO", "GRUPO", "SUBGRUPO"];
-                    
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+
+                    let classified = 0, pending = 0;
+
                     json.forEach(row => {
-                        const hasVal = cols.some(c => row[c] && String(row[c]).trim().length > 0);
-                        hasVal ? ok++ : nok++;
+                        const hasContent = CONFIG_COLUNAS.some(c => row[c] && String(row[c]).trim().length > 0);
+                        hasContent ? classified++ : pending++;
                     });
 
-                    const total = ok+nok;
-                    const prog = total===0 ? 0 : ((ok/total)*100).toFixed(1);
+                    const total = classified + pending;
+                    const prog = total === 0 ? 0 : ((classified / total) * 100).toFixed(1);
+                    const now = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR').slice(0,5);
 
-                    const u = localData.find(x => x.id === uid);
-                    const novas = u.arvores.map(t => t.id === tid ? {...t, progresso:prog, total, pendentes:nok} : t);
-                    
-                    await updateDoc(doc(db, "analistas", uid), { arvores: novas });
-                    alert("Atualizado!");
-                } catch(err) {
-                    alert("Erro: " + err.message);
+                    // Update Firebase
+                    const user = localData.find(u => u.id === userId);
+                    const newTrees = user.arvores.map(t => {
+                        if(t.id === treeId) return { ...t, progresso: parseFloat(prog), total, pendentes: pending, lastUpdate: now };
+                        return t;
+                    });
+
+                    await updateDoc(doc(db, "analistas", userId), { arvores: newTrees });
+                    alert(`✅ Atualizado com sucesso: ${prog}%`);
+
+                } catch (err) {
+                    alert("Erro no arquivo: " + err.message);
                 } finally {
-                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('loader').style.display = 'none';
+                    // Limpa inputs file
+                    document.querySelectorAll('input[type="file"]').forEach(i => i.value = '');
                 }
             };
             reader.readAsArrayBuffer(file);
         }
+
+        // --- CRUD FIREBASE ---
+        async function addUser() {
+            const nome = prompt("Nome do Analista:");
+            if(nome) {
+                document.getElementById('loader').style.display = 'flex';
+                await addDoc(collection(db, "analistas"), { nome, arvores: [] });
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        async function deleteUser(id) {
+            if(confirm("Remover este analista e todos os dados?")) {
+                document.getElementById('loader').style.display = 'flex';
+                await deleteDoc(doc(db, "analistas", id));
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        async function addTree(userId) {
+            const nome = prompt("Nome da Árvore (Ex: Bazar):");
+            if(nome) {
+                document.getElementById('loader').style.display = 'flex';
+                await updateDoc(doc(db, "analistas", userId), {
+                    arvores: arrayUnion({ id: 't'+Date.now(), nome, progresso: 0, total: 0, pendentes: 0, lastUpdate: "Novo" })
+                });
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        async function deleteTree(userId, treeId) {
+            if(confirm("Apagar árvore?")) {
+                const user = localData.find(u => u.id === userId);
+                const newTrees = user.arvores.filter(t => t.id !== treeId);
+                await updateDoc(doc(db, "analistas", userId), { arvores: newTrees });
+            }
+        }
+
+        // --- RENDERIZADOR REAL-TIME ---
+        function startListener() {
+            const grid = document.getElementById('usersGrid');
+            const errorBox = document.getElementById('error-msg');
+            
+            onSnapshot(collection(db, "analistas"), (snapshot) => {
+                grid.innerHTML = '';
+                localData = [];
+                errorBox.style.display = 'none';
+
+                if(snapshot.empty) {
+                    grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:#999;">Nenhum analista encontrado.</div>';
+                }
+
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const user = { id: docSnap.id, ...data };
+                    localData.push(user);
+
+                    let treesHtml = '';
+                    if(user.arvores && user.arvores.length > 0) {
+                        user.arvores.forEach(tree => {
+                            let color = '#4f46e5';
+                            let statusClass = 'empty';
+                            if(tree.progresso >= 100) { color = '#10b981'; statusClass = 'done'; }
+                            else if(tree.progresso > 0) { color = '#f59e0b'; statusClass = 'wip'; }
+
+                            const feitos = (tree.total||0) - (tree.pendentes||0);
+
+                            treesHtml += `
+                                <div class="tree-item ${statusClass}">
+                                    <div class="tree-top">
+                                        <span>${tree.nome}</span>
+                                        <span style="color:${color}">${tree.progresso}%</span>
+                                    </div>
+                                    <div class="progress-track">
+                                        <div class="progress-fill" style="width:${tree.progresso}%; background:${color}"></div>
+                                    </div>
+                                    <div class="stats-row">
+                                        <div class="stat"><small>Total</small><strong>${tree.total||0}</strong></div>
+                                        <div class="stat"><small style="color:var(--success)">Pronto</small><strong>${feitos}</strong></div>
+                                        <div class="stat"><small style="color:var(--danger)">Falta</small><strong>${tree.pendentes||0}</strong></div>
+                                    </div>
+                                    <div class="actions">
+                                        <span style="margin-right:auto; font-size:0.75rem; color:#9ca3af; align-self:center;">${tree.lastUpdate}</span>
+                                        <button class="btn-icon btn-trash" onclick="deleteTree('${user.id}', '${tree.id}')"><i class="fas fa-trash"></i></button>
+                                        <label class="btn-icon">
+                                            <i class="fas fa-upload"></i> Upload
+                                            <input type="file" hidden accept=".xlsx" onchange="processarExcel(this.files[0], '${user.id}', '${tree.id}')">
+                                        </label>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        treesHtml = '<div style="text-align:center; padding:20px; color:#ccc; font-style:italic;">Nenhuma árvore.</div>';
+                    }
+
+                    grid.innerHTML += `
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="user-info">
+                                    <div class="avatar">${user.nome[0].toUpperCase()}</div>
+                                    <span style="font-weight:600; font-size:1.1rem;">${user.nome}</span>
+                                </div>
+                                <button class="btn-icon btn-trash" onclick="deleteUser('${user.id}')" style="border:none;"><i class="fas fa-times"></i></button>
+                            </div>
+                            <div class="tree-container">${treesHtml}</div>
+                            <button class="btn-add-tree" onclick="addTree('${user.id}')"><i class="fas fa-plus"></i> Adicionar Árvore</button>
+                        </div>
+                    `;
+                });
+
+                grid.innerHTML += `
+                    <div class="card-new" onclick="addUser()">
+                        <i class="fas fa-user-plus fa-3x" style="margin-bottom:15px"></i>
+                        <strong>Novo Analista</strong>
+                    </div>
+                `;
+
+            }, (error) => {
+                console.error(error);
+                if(error.code === 'permission-denied') {
+                    errorBox.innerHTML = `<strong>⚠️ ACESSO BLOQUEADO PELO FIREBASE</strong><br>Você precisa ir no Console do Firebase > Firestore > Regras e alterar para <code>allow read, write: if true;</code>`;
+                    errorBox.style.display = 'block';
+                }
+            });
+        }
+
+        // --- LOGIN ---
+        function fazerLogin() {
+            const u = document.getElementById('loginUser').value;
+            if(u) {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('app-screen').style.display = 'block';
+                document.getElementById('welcomeMsg').innerText = u;
+                startListener();
+            } else {
+                alert("Digite um usuário.");
+            }
+        }
+
+        function logout() { location.reload(); }
 
     </script>
 </body>
