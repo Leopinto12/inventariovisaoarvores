@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventário Visão - Inteligente</title>
+    <title>Inventário Visão - Final</title>
     
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -306,7 +306,7 @@
             });
         }
 
-        // --- FUNÇÕES DE LÓGICA (EXCEL) - ATUALIZADA E INTELIGENTE ---
+        // --- FUNÇÃO DE LÓGICA DO EXCEL (AJUSTADA: ACEITA CÓDIGOS/NÚMEROS) ---
         function processarExcel(file, userId, treeId) {
             if(!file) return;
             document.getElementById('loader').style.display = 'flex';
@@ -320,36 +320,35 @@
 
                     let classified = 0, pending = 0;
                     
-                    // Definição das colunas aceitas (Várias nomenclaturas)
+                    // Colunas aceitas para validação (ignorando acentos e case)
                     const COLUNAS_VALIDAS = [
-                        "SECAO", "SEÇÃO", "DEPARTAMENTO", "DEPTO", 
-                        "GRUPO", "CATEGORIA", 
-                        "SUBGRUPO", "SUB-GRUPO", "SUB GRUPO"
+                        "SECAO", "SEÇÃO", "SECÃO", "SESSAO", 
+                        "DEPARTAMENTO", "DEPTO", "DEPTO.", 
+                        "GRUPO", "CATEGORIA", "FAMILIA"
                     ];
 
                     json.forEach(row => {
                         let rowHasContent = false;
                         
-                        // Varre todas as chaves (cabeçalhos) da linha atual
+                        // Varre todas as colunas da linha
                         const rowKeys = Object.keys(row);
 
                         for (const key of rowKeys) {
-                            // Normaliza o nome da coluna para maiúsculo para comparar
                             const upperKey = key.toUpperCase().trim();
 
-                            // Se o nome da coluna estiver na nossa lista de aceitas
+                            // Se o nome da coluna for um dos que aceitamos (Seção, Depto, etc)
                             if (COLUNAS_VALIDAS.includes(upperKey)) {
                                 const val = row[key];
 
-                                // LÓGICA INTELIGENTE:
-                                // 1. Se for NÚMERO (ex: 1, 102), conta como preenchido.
-                                // 2. Se for TEXTO e não for vazio, conta como preenchido.
+                                // 1. Se for NÚMERO (Código da Seção), conta como PRONTO!
                                 if (typeof val === 'number') {
                                     rowHasContent = true;
-                                    break; // Achou conteúdo válido, para de procurar nessa linha
-                                } else if (typeof val === 'string' && val.trim().length > 0) {
+                                    break;
+                                } 
+                                // 2. Se for TEXTO e não estiver vazio, conta como PRONTO!
+                                else if (typeof val === 'string' && val.trim().length > 0) {
                                     rowHasContent = true;
-                                    break; // Achou conteúdo válido, para de procurar nessa linha
+                                    break; 
                                 }
                             }
                         }
@@ -372,7 +371,7 @@
                     });
 
                     await updateDoc(doc(db, "analistas", userId), { arvores: newTrees });
-                    alert(`✅ Progresso Atualizado: ${prog}% (Lógica Inteligente: Seção/Depto/Numérico)`);
+                    alert(`✅ Progresso Atualizado: ${prog}% (Códigos e Nomes aceitos)`);
 
                 } catch (err) { 
                     alert("Erro ao ler Excel: " + err.message); 
