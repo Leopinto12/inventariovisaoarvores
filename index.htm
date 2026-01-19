@@ -182,6 +182,7 @@
 
         let db;
         let localData = [];
+        // CONFIG_COLUNAS mantido apenas se precisar referenciar no futuro, mas a lógica agora é hardcoded para SECAO
         const CONFIG_COLUNAS = ["SECAO", "GRUPO", "SUBGRUPO"];
 
         try {
@@ -320,9 +321,18 @@
                     const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
 
                     let classified = 0, pending = 0;
+                    
                     json.forEach(row => {
-                        const hasContent = CONFIG_COLUNAS.some(c => row[c] && String(row[c]).trim().length > 0);
-                        hasContent ? classified++ : pending++;
+                        // --- LÓGICA ALTERADA ---
+                        // Verifica APENAS a coluna "SECAO" para contar como concluído
+                        // Ignora "GRUPO" e "SUBGRUPO"
+                        const secaoPreenchida = row["SECAO"] && String(row["SECAO"]).trim().length > 0;
+                        
+                        if (secaoPreenchida) {
+                            classified++;
+                        } else {
+                            pending++;
+                        }
                     });
 
                     const total = classified + pending;
@@ -336,10 +346,11 @@
                     });
 
                     await updateDoc(doc(db, "analistas", userId), { arvores: newTrees });
-                    alert(`✅ Progresso Atualizado: ${prog}%`);
+                    alert(`✅ Progresso Atualizado: ${prog}% (Conferência por Seção)`);
 
-                } catch (err) { alert("Erro ao ler Excel: " + err.message); } 
-                finally {
+                } catch (err) { 
+                    alert("Erro ao ler Excel: " + err.message); 
+                } finally {
                     document.getElementById('loader').style.display = 'none';
                     document.querySelectorAll('input[type="file"]').forEach(i => i.value = '');
                 }
@@ -387,4 +398,3 @@
     </script>
 </body>
 </html>
-
