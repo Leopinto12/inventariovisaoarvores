@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventário Visão</title>
+    <title>Inventário Visão - Inteligente</title>
     
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -182,8 +182,6 @@
 
         let db;
         let localData = [];
-        // CONFIG_COLUNAS mantido apenas se precisar referenciar no futuro, mas a lógica agora é hardcoded para SECAO
-        const CONFIG_COLUNAS = ["SECAO", "GRUPO", "SUBGRUPO"];
 
         try {
             const app = initializeApp(firebaseConfig);
@@ -308,7 +306,7 @@
             });
         }
 
-        // --- FUNÇÕES DE LÓGICA (EXCEL) ---
+        // --- FUNÇÕES DE LÓGICA (EXCEL) - ATUALIZADA E INTELIGENTE ---
         function processarExcel(file, userId, treeId) {
             if(!file) return;
             document.getElementById('loader').style.display = 'flex';
@@ -322,13 +320,41 @@
 
                     let classified = 0, pending = 0;
                     
+                    // Definição das colunas aceitas (Várias nomenclaturas)
+                    const COLUNAS_VALIDAS = [
+                        "SECAO", "SEÇÃO", "DEPARTAMENTO", "DEPTO", 
+                        "GRUPO", "CATEGORIA", 
+                        "SUBGRUPO", "SUB-GRUPO", "SUB GRUPO"
+                    ];
+
                     json.forEach(row => {
-                        // --- LÓGICA ALTERADA ---
-                        // Verifica APENAS a coluna "SECAO" para contar como concluído
-                        // Ignora "GRUPO" e "SUBGRUPO"
-                        const secaoPreenchida = row["SECAO"] && String(row["SECAO"]).trim().length > 0;
+                        let rowHasContent = false;
                         
-                        if (secaoPreenchida) {
+                        // Varre todas as chaves (cabeçalhos) da linha atual
+                        const rowKeys = Object.keys(row);
+
+                        for (const key of rowKeys) {
+                            // Normaliza o nome da coluna para maiúsculo para comparar
+                            const upperKey = key.toUpperCase().trim();
+
+                            // Se o nome da coluna estiver na nossa lista de aceitas
+                            if (COLUNAS_VALIDAS.includes(upperKey)) {
+                                const val = row[key];
+
+                                // LÓGICA INTELIGENTE:
+                                // 1. Se for NÚMERO (ex: 1, 102), conta como preenchido.
+                                // 2. Se for TEXTO e não for vazio, conta como preenchido.
+                                if (typeof val === 'number') {
+                                    rowHasContent = true;
+                                    break; // Achou conteúdo válido, para de procurar nessa linha
+                                } else if (typeof val === 'string' && val.trim().length > 0) {
+                                    rowHasContent = true;
+                                    break; // Achou conteúdo válido, para de procurar nessa linha
+                                }
+                            }
+                        }
+
+                        if (rowHasContent) {
                             classified++;
                         } else {
                             pending++;
@@ -346,7 +372,7 @@
                     });
 
                     await updateDoc(doc(db, "analistas", userId), { arvores: newTrees });
-                    alert(`✅ Progresso Atualizado: ${prog}% (Conferência por Seção)`);
+                    alert(`✅ Progresso Atualizado: ${prog}% (Lógica Inteligente: Seção/Depto/Numérico)`);
 
                 } catch (err) { 
                     alert("Erro ao ler Excel: " + err.message); 
