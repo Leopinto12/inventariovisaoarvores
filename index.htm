@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventário Visão - Final</title>
+    <title>Inventário Visão - Multi-Lojas</title>
     
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -306,7 +306,7 @@
             });
         }
 
-        // --- FUNÇÃO DE LÓGICA DO EXCEL (AJUSTADA: ACEITA CÓDIGOS/NÚMEROS) ---
+        // --- LÓGICA DO EXCEL (Atualizada para Colunas A, B, C...) ---
         function processarExcel(file, userId, treeId) {
             if(!file) return;
             document.getElementById('loader').style.display = 'flex';
@@ -316,47 +316,48 @@
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
-                    const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+                    
+                    // IMPORTANTE: Ler usando header: "A" para pegar as letras das colunas
+                    const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { 
+                        header: "A", 
+                        defval: "" 
+                    });
 
                     let classified = 0, pending = 0;
                     
-                    // Colunas aceitas para validação (ignorando acentos e case)
-                    const COLUNAS_VALIDAS = [
-                        "SECAO", "SEÇÃO", "SECÃO", "SESSAO", 
-                        "DEPARTAMENTO", "DEPTO", "DEPTO.", 
-                        "GRUPO", "CATEGORIA", "FAMILIA"
-                    ];
-
                     json.forEach(row => {
-                        let rowHasContent = false;
+                        // Ignorar cabeçalho se houver (opcional, mas aqui vai contar tudo como linha)
                         
-                        // Varre todas as colunas da linha
-                        const rowKeys = Object.keys(row);
+                        // Pegar valores das colunas chave
+                        const colB = row["B"];
+                        const colC = row["C"];
+                        const colD = row["D"];
+                        const colF = row["F"];
+                        const colH = row["H"];
 
-                        for (const key of rowKeys) {
-                            const upperKey = key.toUpperCase().trim();
+                        // Regra 1: ÁGUAS CLARAS -> Coluna C preenchida
+                        const regraAguasClaras = colC && String(colC).trim().length > 0;
 
-                            // Se o nome da coluna for um dos que aceitamos (Seção, Depto, etc)
-                            if (COLUNAS_VALIDAS.includes(upperKey)) {
-                                const val = row[key];
+                        // Regra 2: SÃO LUÍS -> Coluna D preenchida
+                        const regraSaoLuis = colD && String(colD).trim().length > 0;
 
-                                // 1. Se for NÚMERO (Código da Seção), conta como PRONTO!
-                                if (typeof val === 'number') {
-                                    rowHasContent = true;
-                                    break;
-                                } 
-                                // 2. Se for TEXTO e não estiver vazio, conta como PRONTO!
-                                else if (typeof val === 'string' && val.trim().length > 0) {
-                                    rowHasContent = true;
-                                    break; 
-                                }
-                            }
-                        }
+                        // Regra 3: JAQUELINE -> Número nas colunas B, D, F ou H
+                        const regraJaqueline = (typeof colB === 'number') || 
+                                               (typeof colD === 'number') || 
+                                               (typeof colF === 'number') || 
+                                               (typeof colH === 'number');
 
-                        if (rowHasContent) {
+                        // Se QUALQUER uma das regras for atendida, está CONCLUÍDO
+                        if (regraAguasClaras || regraSaoLuis || regraJaqueline) {
                             classified++;
                         } else {
-                            pending++;
+                            // Verifica se a linha está vazia antes de contar como pendente?
+                            // Aqui vamos assumir que se não classificou, é pendente.
+                            // Para evitar contar linhas totalmente em branco, podemos fazer uma checagem extra:
+                            const linhaTemDados = Object.values(row).some(v => String(v).trim().length > 0);
+                            if(linhaTemDados) {
+                                pending++;
+                            }
                         }
                     });
 
@@ -371,7 +372,7 @@
                     });
 
                     await updateDoc(doc(db, "analistas", userId), { arvores: newTrees });
-                    alert(`✅ Progresso Atualizado: ${prog}% (Códigos e Nomes aceitos)`);
+                    alert(`✅ Progresso Atualizado: ${prog}% (Lógica Multi-Lojas Aplicada)`);
 
                 } catch (err) { 
                     alert("Erro ao ler Excel: " + err.message); 
